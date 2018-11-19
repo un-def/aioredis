@@ -74,6 +74,14 @@ def test_error_string(reader):
     assert error.args == ("error",)
 
 
+def test_error_string_with_non_utf8_chars(reader):
+    reader.feed(b"-error \xd1\r\n")
+    error = reader.gets()
+
+    assert isinstance(error, ReplyError)
+    assert error.args == ("error \ufffd",)
+
+
 @pytest.mark.parametrize('error_kind,data', [
     (AuthError, b"-NOAUTH auth required\r\n"),
     (AuthError, b"-ERR invalid password\r\n"),
@@ -103,6 +111,14 @@ def test_errors_in_nested_multi_bulk(reader):
     reader.feed(b"*2\r\n-err0\r\n-err1\r\n")
 
     for r, error in zip(("err0", "err1"), reader.gets()):
+        assert isinstance(error, ReplyError)
+        assert error.args == (r,)
+
+
+def test_errors_with_non_utf8_chars_in_nested_multi_bulk(reader):
+    reader.feed(b"*2\r\n-err\xd1\r\n-err1\r\n")
+
+    for r, error in zip(("err\ufffd", "err1"), reader.gets()):
         assert isinstance(error, ReplyError)
         assert error.args == (r,)
 
